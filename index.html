@@ -604,57 +604,161 @@
     // Configuration
     const ROBOT_ID = '4c5f6921115ae44a0f5c64cc952deba3'; // Robot 82
     const UNLOCK_API = 'https://jp.yours.xyz/index.php/api/v1/merchant/robot/openGrid';
+    const VALID_TOKEN = 'yours82_open_lid';
+
+    // 1. Read query parameters before history cleanup
+    const params = new URLSearchParams(location.search);
+    const incomingToken = params.get('token');
+
+    // 2. Immediately strip token from address bar and browser history
+    // This ensures bookmarks, history entries, and shared URLs do not retain unlock capability
+    if (location.search) {
+      const cleanUrl = location.origin + location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    // 3. Navigation and session checks (matching open_lid.html security design)
+    const navEntries = performance.getEntriesByType("navigation");
+    const isReload = navEntries.length ? navEntries[0].type === "reload" : false;
+    let isAlreadyUnlocked = sessionStorage.getItem('yours82_unlocked') === 'true';
+
+    // 4. Authorization state
+    let canUnlock = false;
+    if (incomingToken === VALID_TOKEN && !isReload && !isAlreadyUnlocked) {
+      canUnlock = true;
+    } else {
+      canUnlock = false;
+    }
 
     // Translations
     const i18n = {
       en: {
-        status: 'Robot 82 Connected & Ready',
-        tagline: 'Follow or subscribe to any of our channels below to <strong>automatically unlock Robot 82\'s compartment lid</strong>!',
-        igDesc: 'Highlights, robotics demos & behind-the-scenes',
-        igBadge: 'Follow & Open Lid',
-        ytDesc: 'Autonomous wayfinding & AI robotics videos',
-        ytBadge: 'Subscribe & Open Lid',
-        liDesc: 'Corporate updates, partnership & careers',
-        liBadge: 'Follow & Open Lid',
-        quickUnlock: 'Already following? Open Robot Lid Now',
+        statusReady: 'Robot 82 Ready to Unlock',
+        statusLocked: 'Robot 82 • Scan QR on Robot to Unlock',
+        statusOpened: 'Robot 82 • Compartment Unlocked',
+        taglineReady: 'Follow or subscribe to any channel below to <strong>automatically unlock Robot 82\'s compartment lid</strong>!',
+        taglineLocked: 'Follow our official channels below. <em>(To unlock Robot 82\'s lid, please scan the QR code on the robot)</em>',
+        taglineOpened: 'Thank you for your support! Robot 82\'s compartment lid has been unlocked.',
+        igBadgeReady: 'Follow & Open Lid',
+        igBadgeNormal: 'Follow',
+        ytBadgeReady: 'Subscribe & Open Lid',
+        ytBadgeNormal: 'Subscribe',
+        liBadgeReady: 'Follow & Open Lid',
+        liBadgeNormal: 'Follow',
+        quickUnlockReady: 'Already following? Open Robot Lid Now',
+        quickUnlockLocked: '🔒 Scan Robot QR to Unlock Lid',
+        quickUnlockOpened: '✅ Lid Already Unlocked',
         modalTitle: 'Compartment Unlocked!',
         modalBody: 'Robot 82\'s lid is opening now. Thank you for your support!',
         modalRedirect: 'Opening {platform} in a moment...',
-        stayText: 'Stay on this page'
+        stayText: 'Stay on this page',
+        noticeScanRequiredTitle: 'QR Scan on Robot Required',
+        noticeScanRequiredBody: 'To open Robot 82\'s compartment lid, please scan the official QR code located directly on Robot 82 using your camera.<br><br>Direct remote access is restricted for security.',
+        noticeAlreadyUnlockedTitle: 'Already Unlocked',
+        noticeAlreadyUnlockedBody: 'The lid was already unlocked during this scan session. To open it again, please scan the QR code on the robot once more.'
       },
       zh: {
-        status: '82号小车 已连接就绪',
-        tagline: '关注或订阅下方任意一个官方平台，<strong>82号小车顶盖将自动开启</strong>！',
-        igDesc: '精彩动态、机器人展示与技术花絮',
-        igBadge: '关注并开盖',
-        ytDesc: '自主寻路、AI交互与前沿科技视频',
-        ytBadge: '订阅并开盖',
-        liDesc: '企业发展、商务合作与招聘动态',
-        liBadge: '关注并开盖',
-        quickUnlock: '已关注？直接一键开启小车顶盖',
+        statusReady: '82号小车 已就绪（扫码已授权）',
+        statusLocked: '82号小车 • 请扫描小车二维码开盖',
+        statusOpened: '82号小车 • 顶盖已开启',
+        taglineReady: '关注或订阅下方任意一个官方平台，<strong>82号小车顶盖将自动开启</strong>！',
+        taglineLocked: '欢迎关注我们的官方媒体平台。<em>（如需开盖，请使用手机扫描小车身上的专属二维码）</em>',
+        taglineOpened: '感谢您的关注与支持！82号小车顶盖已成功开启。',
+        igBadgeReady: '关注并开盖',
+        igBadgeNormal: '关注主页',
+        ytBadgeReady: '订阅并开盖',
+        ytBadgeNormal: '订阅频道',
+        liBadgeReady: '关注并开盖',
+        liBadgeNormal: '关注主页',
+        quickUnlockReady: '已关注？直接一键开启小车顶盖',
+        quickUnlockLocked: '🔒 请扫描小车二维码以开启顶盖',
+        quickUnlockOpened: '✅ 顶盖已开启',
         modalTitle: '🎉 顶盖开启指令已送达！',
         modalBody: '82号小车顶盖正在打开，感谢您的关注与支持！',
         modalRedirect: '正在为您跳转至 {platform}...',
-        stayText: '留在本页'
+        stayText: '留在本页',
+        noticeScanRequiredTitle: '需扫描小车专属二维码',
+        noticeScanRequiredBody: '若要开启82号小车的储物顶盖，请使用手机直接扫描82号小车机身上的专属二维码。<br><br>为防止远程误操作，直接网页访问不开放开盖权限。',
+        noticeAlreadyUnlockedTitle: '本次扫码已开盖',
+        noticeAlreadyUnlockedBody: '您在本次扫码中已成功开盖。如需再次开启，请重新扫描小车身上的专属二维码。'
       },
       ja: {
-        status: 'ロボット82号 接続完了・待機中',
-        tagline: '下記の公式SNSをフォロー／チャンネル登録すると、<strong>ロボット82号のフタが自動で開きます</strong>！',
-        igDesc: 'ロボットのデモ動画やハイライト',
-        igBadge: 'フォローして開ける',
-        ytDesc: '自律走行・AIロボティクスの最新映像',
-        ytBadge: '登録して開ける',
-        liDesc: '企業最新情報・採用・ビジネス協業',
-        liBadge: 'フォローして開ける',
-        quickUnlock: 'フォロー済みの方はこちら：直接フタを開ける',
+        statusReady: 'ロボット82号 認証済み・開蓋可能',
+        statusLocked: 'ロボット82号 • 車体のQRスキャンで開蓋',
+        statusOpened: 'ロボット82号 • フタを開放しました',
+        taglineReady: '下記の公式SNSをフォロー／登録すると、<strong>ロボット82号のフタが自動で開きます</strong>！',
+        taglineLocked: '下記の公式メディアをチェック。<em>（フタを開けるには、ロボット本体のQRコードをスキャンしてください）</em>',
+        taglineOpened: 'フォローありがとうございます！ロボット82号のフタを開放しました。',
+        igBadgeReady: 'フォローして開ける',
+        igBadgeNormal: 'フォロー',
+        ytBadgeReady: '登録して開ける',
+        ytBadgeNormal: 'チャンネル登録',
+        liBadgeReady: 'フォローして開ける',
+        liBadgeNormal: 'フォロー',
+        quickUnlockReady: 'フォロー済みの方：直接フタを開ける',
+        quickUnlockLocked: '🔒 車体のQRコードをスキャンして開蓋',
+        quickUnlockOpened: '✅ フタはすでに開いています',
         modalTitle: '🎉 ロボットのフタが開きました！',
         modalBody: 'ロボット82号のフタを開放しました。フォローありがとうございます！',
         modalRedirect: '{platform} を開いています...',
-        stayText: 'このページにとどまる'
+        stayText: 'このページにとどまる',
+        noticeScanRequiredTitle: 'QRコードのスキャンが必要です',
+        noticeScanRequiredBody: 'フタを開けるには、ロボット82号の車体に掲示されているQRコードをスマートフォンでスキャンしてください。<br><br>遠隔からの誤操作防止のため、直接のURLアクセスでは開蓋できません。',
+        noticeAlreadyUnlockedTitle: '開蓋済みです',
+        noticeAlreadyUnlockedBody: 'このスキャンではすでにフタを開放しています。もう一度開ける場合は車体のQRコードを再スキャンしてください。'
       }
     };
 
     let currentLang = 'en';
+
+    function updateUnlockUI() {
+      const t = i18n[currentLang];
+      const statusText = document.getElementById('status-text');
+      const statusDot = document.querySelector('.status-dot');
+      const statusBadge = document.querySelector('.status-badge');
+      const taglineText = document.getElementById('tagline-text');
+      const igBadge = document.getElementById('ig-badge');
+      const ytBadge = document.getElementById('yt-badge');
+      const liBadge = document.getElementById('li-badge');
+      const quickUnlockText = document.getElementById('quick-unlock-text');
+      const quickBtn = document.querySelector('.manual-trigger-btn');
+
+      if (isAlreadyUnlocked) {
+        statusText.textContent = t.statusOpened;
+        taglineText.innerHTML = t.taglineOpened;
+        igBadge.textContent = t.igBadgeNormal;
+        ytBadge.textContent = t.ytBadgeNormal;
+        liBadge.textContent = t.liBadgeNormal;
+        quickUnlockText.textContent = t.quickUnlockOpened;
+        statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        statusBadge.style.color = '#34d399';
+        statusDot.style.background = '#10b981';
+        if (quickBtn) quickBtn.style.opacity = '0.7';
+      } else if (canUnlock) {
+        statusText.textContent = t.statusReady;
+        taglineText.innerHTML = t.taglineReady;
+        igBadge.textContent = t.igBadgeReady;
+        ytBadge.textContent = t.ytBadgeReady;
+        liBadge.textContent = t.liBadgeReady;
+        quickUnlockText.textContent = t.quickUnlockReady;
+        statusBadge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+        statusBadge.style.color = '#38bdf8';
+        statusDot.style.background = '#38bdf8';
+        if (quickBtn) quickBtn.style.opacity = '1';
+      } else {
+        // Locked / Direct web access
+        statusText.textContent = t.statusLocked;
+        taglineText.innerHTML = t.taglineLocked;
+        igBadge.textContent = t.igBadgeNormal;
+        ytBadge.textContent = t.ytBadgeNormal;
+        liBadge.textContent = t.liBadgeNormal;
+        quickUnlockText.textContent = t.quickUnlockLocked;
+        statusBadge.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+        statusBadge.style.color = '#94a3b8';
+        statusDot.style.background = '#64748b';
+        if (quickBtn) quickBtn.style.opacity = '0.75';
+      }
+    }
 
     function setLang(lang) {
       currentLang = lang;
@@ -662,16 +766,11 @@
         btn.classList.toggle('active', btn.textContent.toLowerCase() === (lang === 'en' ? 'en' : lang === 'zh' ? '中文' : '日本語'));
       });
       const t = i18n[lang];
-      document.getElementById('status-text').textContent = t.status;
-      document.getElementById('tagline-text').innerHTML = t.tagline;
       document.getElementById('ig-desc').textContent = t.igDesc;
-      document.getElementById('ig-badge').textContent = t.igBadge;
       document.getElementById('yt-desc').textContent = t.ytDesc;
-      document.getElementById('yt-badge').textContent = t.ytBadge;
       document.getElementById('li-desc').textContent = t.liDesc;
-      document.getElementById('li-badge').textContent = t.liBadge;
-      document.getElementById('quick-unlock-text').textContent = t.quickUnlock;
       document.getElementById('modal-close-text').textContent = t.stayText;
+      updateUnlockUI();
     }
 
     // Web Audio Synthesized Sci-Fi Chime
@@ -683,7 +782,6 @@
         if (ctx.state === 'suspended') ctx.resume();
 
         const now = ctx.currentTime;
-        // Two-tone rising futuristic chime
         const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
         freqs.forEach((freq, idx) => {
           const osc = ctx.createOscillator();
@@ -736,56 +834,103 @@
     function handleMediaFollow(event, targetUrl, platformName) {
       event.preventDefault();
 
-      // 1. Fire unlock API immediately
-      sendUnlockCommand();
+      if (canUnlock) {
+        // Legitimate QR scan interaction -> perform single-use unlock!
+        canUnlock = false;
+        isAlreadyUnlocked = true;
+        sessionStorage.setItem('yours82_unlocked', 'true');
+        updateUnlockUI();
 
-      // 2. Audio & Haptic feedback
-      playSciFiChime();
-      if (navigator.vibrate) navigator.vibrate([40, 60, 100]);
+        // 1. Fire unlock API immediately
+        sendUnlockCommand();
 
-      // 3. Show feedback modal
-      const t = i18n[currentLang];
-      document.getElementById('modal-title').textContent = t.modalTitle;
-      document.getElementById('modal-body').innerHTML = t.modalBody + '<br>' + t.modalRedirect.replace('{platform}', '<strong>' + platformName + '</strong>');
-      
-      const modal = document.getElementById('modal');
-      const bar = document.getElementById('redirect-bar');
-      bar.style.transition = 'none';
-      bar.style.transform = 'scaleX(0)';
-      modal.classList.add('active');
+        // 2. Audio & Haptic feedback
+        playSciFiChime();
+        if (navigator.vibrate) navigator.vibrate([40, 60, 100]);
 
-      setTimeout(() => {
-        bar.style.transition = 'transform 1.1s linear';
-        bar.style.transform = 'scaleX(1)';
-      }, 50);
+        // 3. Show feedback modal
+        const t = i18n[currentLang];
+        document.getElementById('modal-title').textContent = t.modalTitle;
+        document.getElementById('modal-body').innerHTML = t.modalBody + '<br>' + t.modalRedirect.replace('{platform}', '<strong>' + platformName + '</strong>');
+        
+        const modal = document.getElementById('modal');
+        const bar = document.getElementById('redirect-bar');
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(0)';
+        modal.classList.add('active');
 
-      // 4. Redirect after brief viewing window
-      redirectTimer = setTimeout(() => {
+        setTimeout(() => {
+          bar.style.transition = 'transform 1.1s linear';
+          bar.style.transform = 'scaleX(1)';
+        }, 50);
+
+        // 4. Redirect after brief viewing window
+        redirectTimer = setTimeout(() => {
+          window.location.href = targetUrl;
+        }, 1200);
+      } else {
+        // Direct website visit without valid QR scan or already unlocked:
+        // Do NOT call unlock API! Open social link directly.
         window.location.href = targetUrl;
-      }, 1200);
+      }
     }
 
-    // Direct trigger
+    // Direct / Manual trigger
     function triggerLidUnlock(source) {
-      sendUnlockCommand();
-      playSciFiChime();
-      if (navigator.vibrate) navigator.vibrate([40, 60, 100]);
-
       const t = i18n[currentLang];
-      document.getElementById('modal-title').textContent = t.modalTitle;
-      document.getElementById('modal-body').innerHTML = t.modalBody;
-      
       const modal = document.getElementById('modal');
       const bar = document.getElementById('redirect-bar');
-      bar.style.transition = 'none';
-      bar.style.transform = 'scaleX(1)';
-      modal.classList.add('active');
+
+      if (canUnlock) {
+        canUnlock = false;
+        isAlreadyUnlocked = true;
+        sessionStorage.setItem('yours82_unlocked', 'true');
+        updateUnlockUI();
+
+        sendUnlockCommand();
+        playSciFiChime();
+        if (navigator.vibrate) navigator.vibrate([40, 60, 100]);
+
+        document.getElementById('modal-title').textContent = t.modalTitle;
+        document.getElementById('modal-body').innerHTML = t.modalBody;
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(1)';
+        modal.classList.add('active');
+      } else if (isAlreadyUnlocked) {
+        // Show notice that session is already used
+        document.getElementById('modal-title').textContent = t.noticeAlreadyUnlockedTitle;
+        document.getElementById('modal-body').innerHTML = t.noticeAlreadyUnlockedBody;
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(0)';
+        modal.classList.add('active');
+      } else {
+        // Show notice that QR scan on robot is required
+        document.getElementById('modal-title').textContent = t.noticeScanRequiredTitle;
+        document.getElementById('modal-body').innerHTML = t.noticeScanRequiredBody;
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(0)';
+        modal.classList.add('active');
+      }
     }
 
     function closeModal() {
       if (redirectTimer) clearTimeout(redirectTimer);
       document.getElementById('modal').classList.remove('active');
     }
+
+    // Visibility change listener (matches open_lid.html security protection)
+    // If the user minimizes the browser, turns off screen, or switches apps, invalidate the unlock session
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && canUnlock) {
+        canUnlock = false;
+        isAlreadyUnlocked = true;
+        sessionStorage.setItem('yours82_unlocked', 'true');
+        updateUnlockUI();
+      }
+    });
+
+    // Initial UI state setup
+    updateUnlockUI();
   </script>
 </body>
 </html>

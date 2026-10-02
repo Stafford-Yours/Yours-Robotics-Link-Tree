@@ -12,7 +12,7 @@ import os
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
-DEFAULT_URL = "https://stafford-yours.github.io/Yours-Robotics-Link-Tree/"
+DEFAULT_URL = "https://stafford-yours.github.io/Yours-Robotics-Link-Tree/?token=yours82_open_lid"
 DEFAULT_OUTPUT = os.path.join(os.path.dirname(__file__), "robot82_qr_code.png")
 
 def generate_qr(url=DEFAULT_URL, output_path=DEFAULT_OUTPUT):
